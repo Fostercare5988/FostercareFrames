@@ -1,0 +1,204 @@
+-- F9: Blizzard's buffs, debuffs and weapon enchants at the top right, each area
+-- moved with Ctrl+Shift; each hand's poison over its weapon, main hand left; F10's
+-- borders. The stock buttons redraw themselves every frame (BuffFrame.xml: the
+-- buttons' BuffButton_OnUpdate, TemporaryEnchantFrame's BuffFrame_Enchant_OnUpdate,
+-- BuffFrame's flash clock). Here the time left is a countdown on the icon (F12),
+-- and a button runs its stock redraw only while it flashes (its last
+-- BUFF_WARNING_TIME seconds) or holds the tooltip.
+local _, F = ...
+local db = FostercareFramesDB
+
+local function Area(name, label, width, height, x, y)
+    local area = CreateFrame("Frame", "FostercareFrames" .. name, UIParent)
+    area:SetWidth(width); area:SetHeight(height)
+    area:SetFrameStrata("LOW")
+    if not area:IsUserPlaced() then area:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y) end
+    F.Movable(area, label)
+    area.buttons = {}
+    return area
+end
+local buffs = Area("TopBuffs", "Buffs", 275, 70, -250, -13)
+local debuffs = Area("TopDebuffs", "Debuffs", 275, 35, -250, -95)
+local enchants = Area("Enchants", "Weapon enchants", 65, 30, -180, -13)
+
+-- The stock clocks: the flash (BuffFrame) and the enchants' redraw, run only
+-- while a button is live (flashing or under the cursor).
+local frameClock = BuffFrame:GetScript("OnUpdate")
+local enchantClock = TemporaryEnchantFrame:GetScript("OnUpdate")
+BuffFrame:SetScript("OnUpdate", nil)
+TemporaryEnchantFrame:SetScript("OnUpdate", nil)
+local live = {}
+local function Live(b, on)
+    if (live[b] or false) == on then return end
+    live[b] = on or nil
+    b:SetScript("OnUpdate", on and b.stock or nil)
+    if not on then b:SetAlpha(1) end
+    BuffFrame:SetScript("OnUpdate", next(live) and frameClock or nil)
+    local enchant = live[TempEnchant1] or live[TempEnchant2]
+    TemporaryEnchantFrame:SetScript("OnUpdate", enchant and enchantClock or nil)
+end
+
+-- The countdown from the time left; the button turns live when it starts to
+-- flash (a timer, cancelled when the aura changes again).
+local function Countdown(b, left)
+    local hovered = GameTooltip:IsOwned(b) and true or false
+    if not left or left <= 0 then
+        if b.flash then b.flash:Cancel(); b.flash = nil end
+        b.cd:Clear(); b.ends = nil
+        return Live(b, hovered)
+    end
+    local ends = GetTime() + left
+    if not b.ends or math.abs(b.ends - ends) > 0.1 then
+        b.ends = ends
+        b.cd:SetCooldown(GetTime(), left)
+        if b.flash then b.flash:Cancel(); b.flash = nil end
+        if left > BUFF_WARNING_TIME then
+            b.flash = C_Timer.NewTimer(left - BUFF_WARNING_TIME, function() b.flash = nil; Live(b, true) end)
+        end
+    end
+    Live(b, hovered or left <= BUFF_WARNING_TIME)
+end
+
+-- Shown buttons right to left, eight to a line, closing up round hidden ones;
+-- once a frame after they change.
+local pending
+local function Layout()
+    pending = nil
+    for _, area in ipairs({ buffs, debuffs }) do
+        local n = 0
+        for _, b in ipairs(area.buttons) do
+            if b:IsShown() then
+                b:ClearAllPoints()
+                b:SetPoint("TOPRIGHT", area, "TOPRIGHT", -(n % 8) * 35, -math.floor(n / 8) * 35)
+                n = n + 1
+            end
+        end
+    end
+    for _, b in ipairs(enchants.buttons) do -- by the hand it shows
+        b:ClearAllPoints()
+        b:SetPoint("TOPRIGHT", enchants, "TOPRIGHT", b:GetID() == 17 and 0 or -35, 0)
+    end
+end
+local function LayoutSoon()
+    if not pending then pending = true; C_Timer.After(0, Layout) end
+end
+
+local function Setup(b, area)
+    local name = b:GetName()
+    b:SetParent(area)
+    b.stock = b:GetScript("OnUpdate")
+    b:SetScript("OnUpdate", nil)
+    _G[name .. "Duration"]:SetAlpha(0) -- the stock label; the countdown replaces it
+    _G[name .. "Icon"]:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    b.border = _G[name .. "Border"]
+    b.cd = F.Cooldown(b, 12)
+    b.cd:SetDrawSwipe(false)
+    b.edge = F.Edge(b)
+    b:HookScript("OnEnter", function() Live(b, true) end)
+    b:HookScript("OnLeave", function() Countdown(b, b.ends and b.ends - GetTime()) end)
+    area.buttons[#area.buttons + 1] = b
+end
+
+local function Style(b)
+    if b.buffFilter == "HARMFUL" then
+        b.border:SetAlpha(db.debuffBorders and 1 or 0)
+    else
+        b.edge:SetVertexColor(0.15, 0.15, 0.15, 1)
+        b.edge:SetShown(db.buffBorders)
+    end
+end
+
+-- After the stock BuffButton_Update (every PLAYER_AURAS_CHANGED): hidden when the
+-- aura shows elsewhere (SuperWoW GetPlayerBuffID names it), then its countdown.
+hooksecurefunc("BuffButton_Update", function()
+    local b = this
+    if not b.cd then return end
+    local index = b.buffIndex
+    local id = index >= 0 and GetPlayerBuffID(index)
+    if id and F.Hidden(GetSpellInfo(id), "player", "top") then b:Hide() end
+    Countdown(b, b:IsShown() and b.untilCancelled ~= 1 and GetPlayerBuffTimeLeft(index))
+    Style(b)
+    local shown = b:IsShown() and true or false
+    if b.wasShown ~= shown then b.wasShown = shown; LayoutSoon() end
+end)
+hooksecurefunc("BuffButtons_UpdatePositions", LayoutSoon) -- it re-anchors stock buttons
+
+-- The weapons: the stock redraw once per change (WEAPON_ENCHANT_CHANGED fires on
+-- apply, renew, removal and each charge; WEAPON_SLOT_CHANGED on a new weapon).
+local poisons, missed, bag = {}, {}, {}
+-- GAP: the icon of a temporary enchant (a DLL could give the item that made it).
+-- The item of the enchant's name in your bags (the poison itself), else its spell's.
+local function PoisonIcon(id)
+    if not id or id == 0 then return nil end
+    if poisons[id] then return poisons[id] end
+    local info = C_Item.GetEnchantInfo(id)
+    if not info then return nil end
+    if (missed[id] or 0) > GetTime() then return info.spellID and select(3, GetSpellInfo(info.spellID)) end
+    missed[id] = GetTime() + 60 -- not in the bags: look again in a minute, not at every charge
+    for b = 0, 4 do
+        for s = 1, C_Container.GetContainerNumSlots(b) do
+            local item = C_Container.GetContainerItemInfo(b, s, bag)
+            if item and item.itemName and item.iconFileID and string.find(item.itemName, info.name, 1, true) == 1 then
+                poisons[id] = item.iconFileID
+                return poisons[id]
+            end
+        end
+    end
+    return info.spellID and select(3, GetSpellInfo(info.spellID))
+end
+
+local function Weapons()
+    BuffFrame_Enchant_OnUpdate(0)
+    local _, mainMs, _, mainID, _, offMs, _, offID = C_Item.GetWeaponEnchantInfo()
+    for _, b in ipairs(enchants.buttons) do
+        local main = b:GetID() == 16
+        local ms, id = main and mainMs or offMs, main and mainID or offID
+        Countdown(b, b:IsShown() and ms and ms / 1000)
+        local poison = b:IsShown() and PoisonIcon(id)
+        F.Texture(b.poison, poison or nil)
+        b.poison:SetShown(poison and true or false)
+        b.border:SetAlpha(0) -- quality belongs to the weapon, drawn by the edge
+        local quality = b:IsShown() and db.enchantBorders and GetInventoryItemQuality("player", b:GetID())
+        if quality and quality >= 0 then b.edge:SetVertexColor(GetItemQualityColor(quality)) end
+        b.edge:SetShown(quality and quality >= 0 and true or false)
+    end
+    Layout()
+end
+
+-- Areas and switches.
+local function Shown()
+    buffs:SetShown(db.topBuffs)
+    debuffs:SetShown(db.topDebuffs)
+    enchants:SetShown(db.enchants)
+end
+function F.TopRight()
+    Shown()
+    local was = this -- the stock update reads its button from `this`
+    for _, area in ipairs({ buffs, debuffs }) do
+        for _, b in ipairs(area.buttons) do this = b; BuffButton_Update() end
+    end
+    this = was
+    Weapons()
+end
+F.apply.topBuffs, F.apply.topDebuffs, F.apply.enchants, F.apply.enchantBorders =
+    F.TopRight, F.TopRight, F.TopRight, F.TopRight
+
+local i = 0
+while _G["BuffButton" .. i] do
+    local b = _G["BuffButton" .. i]
+    Setup(b, b.buffFilter == "HARMFUL" and debuffs or buffs)
+    i = i + 1
+end
+for n = 1, 2 do
+    local b = _G["TempEnchant" .. n]
+    Setup(b, enchants)
+    b.poison = b:CreateTexture(nil, "OVERLAY")
+    b.poison:SetAllPoints(_G["TempEnchant" .. n .. "Icon"])
+    b.poison:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+end
+
+local events = CreateFrame("Frame")
+events:RegisterEvent("WEAPON_ENCHANT_CHANGED")
+events:RegisterEvent("WEAPON_SLOT_CHANGED")
+events:RegisterEvent("PLAYER_ENTERING_WORLD")
+events:SetScript("OnEvent", Weapons)
