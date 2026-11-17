@@ -38,12 +38,32 @@ local function Live(b, on)
     TemporaryEnchantFrame:SetScript("OnUpdate", enchant and enchantClock or nil)
 end
 
--- The countdown from the time left; the button turns live when it starts to
--- flash (a timer, cancelled when the aura changes again).
+-- When each button starts to flash (its last BUFF_WARNING_TIME seconds); one
+-- shared timer wakes at the earliest. It is armed again only when that moment
+-- comes sooner, so an aura change makes no new timer or closure (a timer each
+-- was 0.5 KB/s of garbage, /lag 2026-11-17). A timer that finds the wake moved
+-- later does nothing.
+local flashAt, wakeAt, Wake = {}, nil, nil
+local function Arm(at)
+    if wakeAt and wakeAt <= at then return end
+    wakeAt = at
+    C_Timer.After(at - GetTime(), Wake)
+end
+Wake = function()
+    local now = GetTime() + 0.01
+    if not wakeAt or now < wakeAt then return end
+    wakeAt = nil
+    for b, at in pairs(flashAt) do
+        if at <= now then flashAt[b] = nil; Live(b, true) end
+    end
+    for _, at in pairs(flashAt) do Arm(at) end
+end
+
+-- The countdown from the time left; the button turns live when it starts to flash.
 local function Countdown(b, left)
     local hovered = GameTooltip:IsOwned(b) and true or false
     if not left or left <= 0 then
-        if b.flash then b.flash:Cancel(); b.flash = nil end
+        flashAt[b] = nil
         b.cd:Clear(); b.ends = nil
         return Live(b, hovered)
     end
@@ -51,10 +71,8 @@ local function Countdown(b, left)
     if not b.ends or math.abs(b.ends - ends) > 0.1 then
         b.ends = ends
         b.cd:SetCooldown(GetTime(), left)
-        if b.flash then b.flash:Cancel(); b.flash = nil end
-        if left > BUFF_WARNING_TIME then
-            b.flash = C_Timer.NewTimer(left - BUFF_WARNING_TIME, function() b.flash = nil; Live(b, true) end)
-        end
+        flashAt[b] = left > BUFF_WARNING_TIME and ends - BUFF_WARNING_TIME or nil
+        if flashAt[b] then Arm(flashAt[b]) end
     end
     Live(b, hovered or left <= BUFF_WARNING_TIME)
 end
