@@ -14,7 +14,9 @@ local iconOf = {}              -- entry -> its icon
 local slots, found = {}, {}
 local hidden = { top = {}, player = {}, target = {} }
 local watching = {}            -- unit -> a watched entry is on it
-local spells = {}              -- name -> { slot, book } of your spell, or false
+local byName = { player = {}, target = {} } -- unit -> aura name -> entry
+local byID = { player = {}, target = {} }   -- unit -> spell ID -> entry
+local spells = {}              -- name -> { slot, book } of your spell with a cooldown, or false
 
 -- For the rows and the top right: whether an aura is shown elsewhere instead.
 -- place "top" is the top right, else the unit's row; source is the caster's token.
@@ -24,24 +26,21 @@ function F.Hidden(name, unit, place, source)
     return rule or false
 end
 
-local function Matches(entry, name, spellID, source)
-    return (entry.name == name or entry.spellID and entry.spellID == spellID)
-        and (not entry.mine or source ~= nil and UnitIsUnit(source, "player"))
-end
-
 -- The spell's icon (a name-only entry: your own spell of that name).
 local function SpellIcon(entry)
     local _, _, texture = GetSpellInfo(entry.spellID or entry.name)
     return texture or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
--- Your spell of that name: its book slot, for its cooldown.
+-- Your spell of that name: its book slot, for its cooldown; false for a spell
+-- with none of its own (Slice and Dice), so a cast reads nothing for it.
 local function Spell(name)
     local known = spells[name]
     if known == nil then
         local id = select(10, GetSpellInfo(name))
+        local base = id and GetSpellBaseCooldown(id)
         local slot, book
-        if id then slot, book = FindSpellBookSlotByID(id) end
+        if base and base > 0 then slot, book = FindSpellBookSlotByID(id) end
         known = slot and { slot, book } or false
         spells[name] = known
     end
@@ -53,18 +52,9 @@ local function Icon(entry, index)
     local icon = icons[name]
     if not icon then
         icon = CreateFrame("Frame", name, UIParent)
-        icon:SetWidth(SIZE); icon:SetHeight(SIZE)
         icon:SetFrameLevel(10)
-        icon.texture = icon:CreateTexture(nil, "ARTWORK")
-        icon.texture:SetAllPoints(icon)
-        icon.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        icon.cd = F.Cooldown(icon, 14)
+        F.Icon(icon, SIZE, 14)
         icon.cd:SetScript("OnCooldownDone", function() if icon.cooling then F.WatchMissing("player") end end)
-        local over = CreateFrame("Frame", nil, icon) -- above the sweep and its numbers
-        over:SetAllPoints(icon)
-        over:SetFrameLevel(icon:GetFrameLevel() + 5)
-        icon.count = over:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-        icon.count:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -1, 2)
         icon.handle = F.Movable(icon, entry.name, function() F.Watch(icon.entry.unit) end)
         icon:Hide()
         icons[name] = icon
@@ -79,28 +69,23 @@ local function Icon(entry, index)
     return icon
 end
 
-local function Timer(icon, start, duration)
-    if icon.start == start and icon.duration == duration then return end
-    icon.start, icon.duration = start, duration
-    if start then icon.cd:SetCooldown(start, duration) else icon.cd:Clear() end
-end
-
 local function Show(icon, texture, count, duration, expires)
     if icon.cooling then
         icon.cooling = nil
-        icon.texture:SetDesaturated(false)
+        icon.icon:SetDesaturated(false)
         icon.cd:SetReverse(true)
     end
     icon.up = true
-    F.Texture(icon.texture, texture)
-    F.Text(icon.count, count and count > 1 and count or "")
-    local timed = duration and duration > 0 and expires and expires > GetTime()
-    Timer(icon, timed and expires - duration or nil, duration)
+    F.Texture(icon.icon, texture)
+    F.Stacks(icon, count)
+    F.Timing(icon, duration, expires)
     icon:Show()
 end
 
 -- One of your buffs has ended: its spell's own cooldown, greyed with a filling
--- sweep, until it is ready. A cooldown of 1.5 s or less is the global one.
+-- sweep, until it is ready. A cooldown of 1.5 s or less is the global one (a
+-- rogue's 1 s too); C_Spell.GetSpellCooldown's isOnGCD would say so, but in a new
+-- table at every read.
 local function ShowCooldown(icon, entry)
     if entry.unit ~= "player" or not entry.cooldown then return false end
     local spell = Spell(entry.name)
@@ -109,12 +94,12 @@ local function ShowCooldown(icon, entry)
     if not start or duration <= 1.5 or start + duration <= GetTime() then return false end
     if not icon.cooling then
         icon.cooling = true
-        icon.texture:SetDesaturated(true)
+        icon.icon:SetDesaturated(true)
         icon.cd:SetReverse(false)
-        F.Texture(icon.texture, SpellIcon(entry))
-        F.Text(icon.count, "")
+        F.Texture(icon.icon, SpellIcon(entry))
+        F.Stacks(icon, nil)
     end
-    Timer(icon, start, duration)
+    F.Timing(icon, duration, start + duration)
     icon:Show()
     return true
 end
@@ -123,28 +108,33 @@ end
 function F.WatchMissing(unit)
     for entry, icon in pairs(iconOf) do
         if entry.unit == unit and not icon.up and not ShowCooldown(icon, entry) and not icon.handle.revealed then
-            if icon.cooling then icon.cooling = nil; icon.texture:SetDesaturated(false); icon.cd:SetReverse(true) end
+            if icon.cooling then icon.cooling = nil; icon.icon:SetDesaturated(false); icon.cd:SetReverse(true) end
             icon:Hide()
         end
     end
 end
 
--- Reads the unit's auras of its kind once and shows the watched ones it has.
+-- The first aura that matches an entry (Only mine: one you cast) shows on its icon.
+local function Found(entry, texture, count, duration, expires, source)
+    if not entry or found[entry] or entry.mine and not (source and UnitIsUnit(source, "player")) then return end
+    found[entry] = true
+    if iconOf[entry] then Show(iconOf[entry], texture, count, duration, expires) end
+end
+
+-- Reads the unit's auras of its kind once; each finds its entry by name and by
+-- spell ID (the name keeps a higher rank matching).
 function F.Watch(unit)
     if not watching[unit] then return end
     for _, icon in pairs(iconOf) do if icon.entry.unit == unit then icon.up = nil end end
     table.wipe(found)
     if UnitExists(unit) then
+        local names, ids = byName[unit], byID[unit]
         local _, n = C_UnitAuras.GetAuraSlots(unit, FILTER[unit], nil, nil, slots)
         for i = 1, n do
             local name, texture, count, _, duration, expires, source, _, _, spellID =
                 C_UnitAuras.UnitAuraBySlot(unit, slots[i])
-            for _, entry in ipairs(db.watched) do
-                if entry.unit == unit and not found[entry] and Matches(entry, name, spellID, source) then
-                    found[entry] = true
-                    if iconOf[entry] then Show(iconOf[entry], texture, count, duration, expires) end
-                end
-            end
+            Found(name and names[name], texture, count, duration, expires, source)
+            Found(spellID and ids[spellID], texture, count, duration, expires, source)
         end
     end
     F.WatchMissing(unit)
@@ -154,6 +144,8 @@ end
 -- the top right told what now shows elsewhere.
 function F.Rebuild()
     for _, set in pairs(hidden) do table.wipe(set) end
+    for _, set in pairs(byName) do table.wipe(set) end
+    for _, set in pairs(byID) do table.wipe(set) end
     table.wipe(iconOf)
     watching.player, watching.target = nil, nil
     for _, icon in pairs(icons) do icon.handle.off = true; icon.up = nil; icon:Hide() end
@@ -164,6 +156,8 @@ function F.Rebuild()
             iconOf[entry] = Icon(entry, index)
         end
         watching[entry.unit] = true
+        byName[entry.unit][entry.name] = entry
+        if entry.spellID then byID[entry.unit][entry.spellID] = entry end
         if entry.unit == "player" and not entry.topRight then hidden.top[entry.name] = true end
         if not entry.inRow then hidden[entry.unit][entry.name] = entry.mine and "mine" or true end
     end

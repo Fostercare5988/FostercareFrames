@@ -21,12 +21,9 @@ end
 
 local function NewButton(row, i)
     local b = CreateFrame("Button", nil, row)
-    b:SetWidth(SIZE); b:SetHeight(SIZE)
+    F.Icon(b, SIZE, 9)
     local x, y = ((i - 1) % PER_LINE) * (SIZE + GAP), -math.floor((i - 1) / PER_LINE) * (SIZE + GAP)
     b:SetPoint("TOP" .. row.side, row, "TOP" .. row.side, row.side == "RIGHT" and -x or x, y)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetAllPoints(b)
-    b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     b.edge = F.Edge(b)
     b.edge:SetVertexColor(0.15, 0.15, 0.15, 1)
     b.overlay = b:CreateTexture(nil, "OVERLAY")
@@ -35,13 +32,6 @@ local function NewButton(row, i)
     b.overlay:SetTexture(OVERLAY)
     b.overlay:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
     b.overlay:Hide()
-    b.cd = F.Cooldown(b, 9)
-    local over = CreateFrame("Frame", nil, b) -- the stacks above the sweep
-    over:SetAllPoints(b)
-    over:SetFrameLevel(b:GetFrameLevel() + 5)
-    b.count = over:CreateFontString(nil, "OVERLAY")
-    b.count:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    b.count:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
     b.row = row
     b:RegisterForClicks("RightButtonUp")
     b:SetScript("OnEnter", OnEnter)
@@ -83,18 +73,6 @@ local function Border(b, dispel)
     end
 end
 
--- Sweep and countdown; restarted only when the aura's timing changes.
-local function Timing(b, duration, expires)
-    local start = duration and duration > 0 and expires and expires > GetTime() and expires - duration or nil
-    if b.start == start and b.duration == duration then return end
-    b.start, b.duration = start, duration
-    if start then b.cd:SetCooldown(start, duration) else b.cd:Clear() end
-end
-
-local function Count(b, stacks)
-    F.Text(b.count, stacks and stacks > 1 and stacks or "")
-end
-
 -- Under its frame until the player moves it; debuffs under the buffs while
 -- there are any (the target's lower: its target of target and cast bar sit there).
 local function Place(row)
@@ -126,8 +104,8 @@ local function Fill(row)
                 local b = row.buttons[used] or NewButton(row, used)
                 b.index, b.spellID, b.source = i, spellID, source and UnitGUID(source)
                 F.Texture(b.icon, texture)
-                Count(b, stacks)
-                Timing(b, duration, expires)
+                F.Stacks(b, stacks)
+                F.Timing(b, duration, expires)
                 Border(b, dispel)
                 b:Show()
             end
@@ -155,8 +133,8 @@ local function Refresh(unit, ids)
         for j = 1, hit and 0 or row.used do
             local b = row.buttons[j]
             if b.spellID == d.spellId and b.source == d.sourceGUID then
-                Count(b, d.applications)
-                Timing(b, d.duration, d.expirationTime)
+                F.Stacks(b, d.applications)
+                F.Timing(b, d.duration, d.expirationTime)
                 hit = true
                 break
             end
@@ -166,8 +144,10 @@ local function Refresh(unit, ids)
     return true
 end
 
--- The stock target auras give way (TargetFrame.lua TargetDebuffButton_Update,
--- which the stock target of target also runs).
+-- The stock target auras give way. TargetFrame's UNIT_AURA only draws them
+-- (TargetFrame.lua:87-90, TargetDebuffButton_Update), so it is off; the hook
+-- hides what a target change and the stock target of target still draw.
+TargetFrame:UnregisterEvent("UNIT_AURA")
 hooksecurefunc("TargetDebuffButton_Update", function()
     for i = 1, 5 do _G["TargetFrameBuff" .. i]:Hide() end
     for i = 1, 16 do _G["TargetFrameDebuff" .. i]:Hide() end

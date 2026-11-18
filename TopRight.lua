@@ -20,6 +20,7 @@ end
 local buffs = Area("TopBuffs", "Buffs", 275, 70, -250, -13)
 local debuffs = Area("TopDebuffs", "Debuffs", 275, 35, -250, -95)
 local enchants = Area("Enchants", "Weapon enchants", 65, 30, -180, -13)
+local areas = { buffs, debuffs }
 
 -- The stock clocks: the flash (BuffFrame) and the enchants' redraw, run only
 -- while a button is live (flashing or under the cursor).
@@ -78,11 +79,12 @@ local function Countdown(b, left)
 end
 
 -- Shown buttons right to left, eight to a line, closing up round hidden ones;
--- once a frame after they change.
+-- once a frame after they change. The enchants are placed by Weapons: only they
+-- swap (BuffFrame_Enchant_OnUpdate gives TempEnchant1 the off hand when it has one).
 local pending
 local function Layout()
     pending = nil
-    for _, area in ipairs({ buffs, debuffs }) do
+    for _, area in ipairs(areas) do
         local n = 0
         for _, b in ipairs(area.buttons) do
             if b:IsShown() then
@@ -91,10 +93,6 @@ local function Layout()
                 n = n + 1
             end
         end
-    end
-    for _, b in ipairs(enchants.buttons) do -- by the hand it shows
-        b:ClearAllPoints()
-        b:SetPoint("TOPRIGHT", enchants, "TOPRIGHT", b:GetID() == 17 and 0 or -35, 0)
     end
 end
 local function LayoutSoon()
@@ -151,7 +149,7 @@ hooksecurefunc("BuffButtons_UpdatePositions", LayoutSoon) -- it re-anchors stock
 -- renumbers them. UNVERIFIED: that a stun's time (diminishing returns included)
 -- arrives after PLAYER_AURAS_CHANGED; the second Cheap Shot showed no time at
 -- the top right (2026-11-18).
-local times, areas = CreateFrame("Frame"), { buffs, debuffs }
+local times = CreateFrame("Frame")
 times:RegisterUnitEvent("UNIT_AURA_DELTA", "player")
 times:SetScript("OnEvent", function(_, _, _, info)
     if info.isFullUpdate or info.addedAuraInstanceIDs or info.removedAuraInstanceIDs
@@ -201,8 +199,9 @@ local function Weapons()
         local quality = b:IsShown() and db.enchantBorders and GetInventoryItemQuality("player", b:GetID())
         if quality and quality >= 0 then b.edge:SetVertexColor(GetItemQualityColor(quality)) end
         b.edge:SetShown(quality and quality >= 0 and true or false)
+        b:ClearAllPoints() -- by the hand it shows, main hand left
+        b:SetPoint("TOPRIGHT", enchants, "TOPRIGHT", b:GetID() == 17 and 0 or -35, 0)
     end
-    Layout()
 end
 
 -- Areas and switches.
@@ -214,7 +213,7 @@ end
 function F.TopRight()
     Shown()
     local was = this -- the stock update reads its button from `this`
-    for _, area in ipairs({ buffs, debuffs }) do
+    for _, area in ipairs(areas) do
         for _, b in ipairs(area.buttons) do this = b; BuffButton_Update() end
     end
     this = was

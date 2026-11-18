@@ -28,8 +28,8 @@ frame it places.
 ## Requirements
 
 WoW 1.12.1 (build 5875) with **ClassicAPI**, **SuperWoW** and **NamPower**
-loaded. The energy ticks leave out power from spells when NamPower's
-`NP_EnableSpellEnergizeEvents` is 1.
+loaded. The energy ticks leave out power that comes from spells (NamPower's
+`SPELL_ENERGIZE_ON_SELF`).
 
 ## Installation
 

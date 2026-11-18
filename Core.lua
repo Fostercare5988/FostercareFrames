@@ -61,6 +61,31 @@ function F.Cooldown(parent, size)
     return cd
 end
 
+-- An aura icon on `b`: its picture, the sweep and countdown, and the stacks above them.
+function F.Icon(b, size, textSize)
+    b:SetWidth(size); b:SetHeight(size)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints(b)
+    b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    b.cd = F.Cooldown(b, textSize)
+    local over = CreateFrame("Frame", nil, b)
+    over:SetAllPoints(b)
+    over:SetFrameLevel(b:GetFrameLevel() + 5)
+    b.count = over:CreateFontString(nil, "OVERLAY")
+    b.count:SetFont(STANDARD_TEXT_FONT, textSize, "OUTLINE")
+    b.count:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
+end
+function F.Stacks(b, stacks) F.Text(b.count, stacks and stacks > 1 and stacks or "") end
+
+-- The sweep of an aura (or a cooldown) ending at `expires`; restarted only when
+-- its timing changes.
+function F.Timing(b, duration, expires)
+    local start = duration and duration > 0 and expires and expires > GetTime() and expires - duration or nil
+    if b.start == start and b.duration == duration then return end
+    b.start, b.duration = start, duration
+    if start then b.cd:SetCooldown(start, duration) else b.cd:Clear() end
+end
+
 -- A 1 px frame behind an icon (BACKGROUND, so the icon covers all but the edge).
 function F.Edge(button)
     local edge = button:CreateTexture(nil, "BACKGROUND")
