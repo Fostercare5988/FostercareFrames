@@ -106,6 +106,10 @@ local function Setup(b, area)
     b:SetScript("OnUpdate", nil)
     _G[name .. "Duration"]:SetAlpha(0) -- the stock label; the countdown replaces it
     _G[name .. "Icon"]:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    -- The stock icon and count are on BACKGROUND (BuffFrame.xml:9-18), the edge's
+    -- layer, and one layer draws in no fixed order: the edge hid the icon.
+    _G[name .. "Icon"]:SetDrawLayer("ARTWORK")
+    _G[name .. "Count"]:SetDrawLayer("OVERLAY")
     b.border = _G[name .. "Border"]
     b.cd = F.Cooldown(b, 12)
     b.cd:SetDrawSwipe(false)
