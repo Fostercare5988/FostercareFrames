@@ -6,10 +6,10 @@
 -- and a button runs its stock redraw only while it flashes (its last
 -- BUFF_WARNING_TIME seconds) or holds the tooltip.
 local _, F = ...
-local db = FostercareFramesDB
+local db = UnitFramesDB
 
 local function Area(name, label, width, height, x, y)
-    local area = CreateFrame("Frame", "FostercareFrames" .. name, UIParent)
+    local area = CreateFrame("Frame", "UnitFrames" .. name, UIParent)
     area:SetWidth(width); area:SetHeight(height)
     area:SetFrameStrata("LOW")
     if not area:IsUserPlaced() then area:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y) end

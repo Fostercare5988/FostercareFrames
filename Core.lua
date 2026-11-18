@@ -1,11 +1,11 @@
--- FostercareFrames: Blizzard's player, target and pet frames, their auras and cast
+-- UnitFrames: Blizzard's player, target and pet frames, their auras and cast
 -- bars, energy ticks. Doc headings are ClassicAPI's docs/API.md;
 -- "FrameXML" is the client's own code.
-if not CLASSIC_API_VERSION then error("FostercareFrames needs ClassicAPI.", 0) end
+if not CLASSIC_API_VERSION then error("UnitFrames needs ClassicAPI.", 0) end
 
 local _, F = ...
-FostercareFramesDB = FostercareFramesDB or {} -- restored first: LoadSavedVariablesFirst
-local db = FostercareFramesDB
+UnitFramesDB = UnitFramesDB or {} -- restored first: LoadSavedVariablesFirst
+local db = UnitFramesDB
 
 -- The page (Page.lua), in play order: a string is a section header, a row is
 -- { key, label, tip }. Every switch is on by default; the frames start before the

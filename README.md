@@ -1,4 +1,4 @@
-# FostercareFrames
+# UnitFrames
 
 Blizzard's player, target and pet frames, made better for World of Warcraft
 1.12.1: auras, cast bars and energy ticks.
@@ -26,14 +26,14 @@ aura leaves the rows and the top right.
 
 ## Requirements
 
-WoW 1.12.1 (build 5875) with **ClassicAPI**, **SuperWoW** and **NamPower**
+WoW 1.12.1 (build 5875) with **[ClassicAPI](https://github.com/brues-code/ClassicAPI)**, **SuperWoW** and **NamPower**
 loaded. The energy ticks leave out power that comes from spells (NamPower's
 `SPELL_ENERGIZE_ON_SELF`).
 
 ## Installation
 
-Download `FostercareFrames.zip` from the
-[latest release](https://github.com/Fostercare5988/FostercareFrames/releases/latest),
+Download `UnitFrames.zip` from the
+[latest release](https://github.com/Fostercare5988/UnitFrames/releases/latest),
 extract it into `Interface/AddOns` and enable it in the game's AddOns list. The
-folder must contain `Interface/AddOns/FostercareFrames/FostercareFrames.toc`.
-It replaces the unit-frame features of FostercareTweaks before 1.0.0.
+folder must contain `Interface/AddOns/UnitFrames/UnitFrames.toc`.
+It replaces the unit-frame features of Tweaks before 1.0.0.

@@ -2,7 +2,7 @@
 -- to a line: sweeps, countdowns, stacks, dispel colours (F10's borders). The
 -- stock target auras give way.
 local _, F = ...
-local db = FostercareFramesDB
+local db = UnitFramesDB
 
 local SIZE, GAP, PER_LINE, MAX = 20, 3, 8, 32
 local OVERLAY = "Interface\\Buttons\\UI-Debuff-Overlays"
@@ -44,7 +44,7 @@ end
 -- A row: a named frame (the client saves where the player put it), its buttons
 -- made as auras need them.
 local function NewRow(name, unit, filter, frame, side, label)
-    local row = CreateFrame("Frame", "FostercareFrames" .. name, frame)
+    local row = CreateFrame("Frame", "UnitFrames" .. name, frame)
     row:SetWidth(PER_LINE * (SIZE + GAP) - GAP); row:SetHeight(SIZE)
     row:SetFrameStrata("LOW")
     row.unit, row.filter, row.frame, row.side, row.buttons, row.used = unit, filter, frame, side, {}, 0

@@ -1,9 +1,9 @@
 -- The target's cast bar (F3) and your own, moved with Ctrl+Shift (F4).
 local _, F = ...
-local db = FostercareFramesDB
+local db = UnitFramesDB
 
 local GOLD, GREY = { 1, 0.8, 0 }, { 0.65, 0.65, 0.65 }
-local bar = CreateFrame("StatusBar", "FostercareFramesTargetCast", TargetFrame)
+local bar = CreateFrame("StatusBar", "UnitFramesTargetCast", TargetFrame)
 bar:SetWidth(140); bar:SetHeight(10)
 bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 bar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })

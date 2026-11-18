@@ -1,7 +1,7 @@
 -- Blizzard's unit frames: class colours (F1), exact numbers (F2), target of target
 -- by event (F5), raid marks (F6), and the stock frames' handles (F13).
 local _, F = ...
-local db = FostercareFramesDB
+local db = UnitFramesDB
 
 -- F1: the class colour behind the player's and target's names, on BORDER: above
 -- the frames' 50% black square (BACKGROUND), below their art. NPC targets keep

@@ -2,7 +2,7 @@
 -- line runs to the next tick (OnUpdate while it shows: animation, VANILLAFORGE §2)
 -- and the bar's bottom edge flashes on each tick. Width 6, the player's values.
 local _, F = ...
-local db = FostercareFramesDB
+local db = UnitFramesDB
 
 local bar = PlayerFrameManaBar
 local line = CreateFrame("Frame", nil, bar)

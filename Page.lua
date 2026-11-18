@@ -1,17 +1,17 @@
--- The FostercareFrames page in ClassicAPI's Settings window (AddOn Options, or /ffr).
+-- The UnitFrames page in ClassicAPI's Settings window (AddOn Options, or /ffr).
 local _, F = ...
-local db = FostercareFramesDB
+local db = UnitFramesDB
 local category
 
 SettingsRegistrar:AddRegistrant(function()
     local layout
-    category, layout = Settings.RegisterVerticalLayoutCategory("FostercareFrames")
+    category, layout = Settings.RegisterVerticalLayoutCategory("UnitFrames")
     for _, row in ipairs(F.PAGE) do
         if type(row) == "string" then
             layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(row))
         else
             local key, name, tip = row[1], row[2], row[3]
-            local setting = Settings.RegisterAddOnSetting(category, "FostercareFrames_" .. key, key, db,
+            local setting = Settings.RegisterAddOnSetting(category, "UnitFrames_" .. key, key, db,
                 Settings.VarType.Boolean, name, true)
             setting:SetValueChangedCallback(F.apply[key])
             Settings.CreateCheckbox(category, setting, tip)
@@ -20,11 +20,11 @@ SettingsRegistrar:AddRegistrant(function()
     Settings.RegisterAddOnCategory(category)
 end)
 
-SLASH_FOSTERCAREFRAMES1 = "/ffr"
-SlashCmdList.FOSTERCAREFRAMES = function()
+SLASH_UNITFRAMES1 = "/ffr"
+SlashCmdList.UNITFRAMES = function()
     if category then Settings.OpenToCategory(category:GetID()) end
 end
 
 -- The one public function: Auras calls it after its list changes, since the rows
 -- and the top right leave out what it shows.
-FostercareFrames = { Refresh = function() F.Rows(); F.TopRight() end }
+UnitFrames = { Refresh = function() F.Rows(); F.TopRight() end }
