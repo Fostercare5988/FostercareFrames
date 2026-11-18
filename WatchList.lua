@@ -63,8 +63,9 @@ Button("Add target debuff", 120, 122, function() Add("target") end)
 box:SetScript("OnEnterPressed", function() Add("player") end)
 
 local function Tip(frame, text)
+    frame.tip = text
     frame:SetScript("OnEnter", function()
-        GameTooltip:SetOwner(frame, "ANCHOR_RIGHT"); GameTooltip:SetText(text, 1, 1, 1, 1, true); GameTooltip:Show()
+        GameTooltip:SetOwner(frame, "ANCHOR_RIGHT"); GameTooltip:SetText(frame.tip, 1, 1, 1, 1, true); GameTooltip:Show()
     end)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
@@ -133,6 +134,11 @@ Draw = function()
                 local check = line.checks[c]
                 check:SetShown(column[4] == nil or column[4] == entry.unit)
                 check:SetChecked(entry[column[1]])
+                -- A spell with no cooldown of its own (Slice and Dice): CD has nothing to show.
+                local dead = column[1] == "cooldown" and not F.HasCooldown(entry.name)
+                check:SetEnabled(not dead)
+                check:SetAlpha(dead and 0.35 or 1)
+                check.tip = dead and entry.name .. " has no cooldown of its own." or column[3]
             end
         end
     end

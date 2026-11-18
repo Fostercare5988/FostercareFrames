@@ -47,6 +47,9 @@ local function Spell(name)
     return known
 end
 
+-- For the list: whether a buff's CD switch can show anything.
+function F.HasCooldown(name) return Spell(name) and true or false end
+
 local function Icon(entry, index)
     local name = "FostercareFramesWatch_" .. entry.unit .. "_" .. string.gsub(entry.name, "[^%w]", "")
     local icon = icons[name]
