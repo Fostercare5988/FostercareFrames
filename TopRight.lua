@@ -145,6 +145,24 @@ hooksecurefunc("BuffButton_Update", function()
 end)
 hooksecurefunc("BuffButtons_UpdatePositions", LayoutSoon) -- it re-anchors stock buttons
 
+-- A new duration is an update in UNIT_AURA_DELTA (API.md, updatedAuraInstanceIDs);
+-- the stock redraw that caught one each frame is off, so the shown icons read
+-- their time again. An aura added or gone waits for the stock update, which
+-- renumbers them. UNVERIFIED: that a stun's time (diminishing returns included)
+-- arrives after PLAYER_AURAS_CHANGED; the second Cheap Shot showed no time at
+-- the top right (2026-11-18).
+local times, areas = CreateFrame("Frame"), { buffs, debuffs }
+times:RegisterUnitEvent("UNIT_AURA_DELTA", "player")
+times:SetScript("OnEvent", function(_, _, _, info)
+    if info.isFullUpdate or info.addedAuraInstanceIDs or info.removedAuraInstanceIDs
+        or not info.updatedAuraInstanceIDs then return end
+    for _, area in ipairs(areas) do
+        for _, b in ipairs(area.buttons) do
+            if b:IsShown() and b.untilCancelled ~= 1 then Countdown(b, GetPlayerBuffTimeLeft(b.buffIndex)) end
+        end
+    end
+end)
+
 -- The weapons: the stock redraw once per change (WEAPON_ENCHANT_CHANGED fires on
 -- apply, renew, removal and each charge; WEAPON_SLOT_CHANGED on a new weapon).
 local poisons, missed, bag = {}, {}, {}
