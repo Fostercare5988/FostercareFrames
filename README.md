@@ -1,7 +1,7 @@
 # FostercareFrames
 
 Blizzard's player, target and pet frames, made better for World of Warcraft
-1.12.1: auras, cast bars, energy ticks and watched auras.
+1.12.1: auras, cast bars and energy ticks.
 
 ## Features
 
@@ -17,13 +17,12 @@ Blizzard's player, target and pet frames, made better for World of Warcraft
 - **The top-right buffs, debuffs and weapon enchants**, each area moved with
   Ctrl+Shift; the poison on each weapon, main hand left; the time left counts
   down on the icon.
-- **Watched auras:** your chosen buffs and your target's debuffs, each its own
-  icon with the time left; a buff of yours that ends shows its spell's cooldown.
 - **Borders** on buffs, debuffs and weapon enchants.
 
-Every feature has a switch on its page in AddOn Options; `/ffr` opens it, and
-its Watched auras button opens the list. Ctrl+Shift shows a handle on every
-frame it places.
+Every feature has a switch on its page in AddOn Options; `/ffr` opens it.
+Ctrl+Shift shows a handle on every frame it places. The watched auras are their
+own addon, [Auras](https://github.com/Fostercare5988/Auras): with it, a watched
+aura leaves the rows and the top right.
 
 ## Requirements
 

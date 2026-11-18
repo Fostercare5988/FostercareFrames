@@ -1,6 +1,6 @@
 -- F8: your and your target's buffs and debuffs under their frames, 20 px, eight
 -- to a line: sweeps, countdowns, stacks, dispel colours (F10's borders). The
--- stock target auras give way. One aura frame serves the rows and watched auras.
+-- stock target auras give way.
 local _, F = ...
 local db = FostercareFramesDB
 
@@ -162,11 +162,10 @@ events:SetScript("OnEvent", function(_, e, unit, info)
         local ids = info.updatedAuraInstanceIDs
         if not (ids and not info.isFullUpdate and not info.addedAuraInstanceIDs
             and not info.removedAuraInstanceIDs and Refresh(unit, ids)) then Unit(unit) end
-        F.Watch(unit)
     elseif e == "PLAYER_TARGET_CHANGED" then
-        Unit("target"); F.Watch("target")
+        Unit("target")
     else
-        Unit("player"); Unit("target"); F.Watch("player"); F.Watch("target")
+        Unit("player"); Unit("target")
     end
 end)
 

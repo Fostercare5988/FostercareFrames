@@ -253,3 +253,5 @@ events:RegisterEvent("WEAPON_ENCHANT_CHANGED")
 events:RegisterEvent("WEAPON_SLOT_CHANGED")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:SetScript("OnEvent", Weapons)
+
+F.TopRight() -- the switches and every button once at load

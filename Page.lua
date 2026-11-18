@@ -17,9 +17,6 @@ SettingsRegistrar:AddRegistrant(function()
             Settings.CreateCheckbox(category, setting, tip)
         end
     end
-    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Watched"))
-    layout:AddInitializer(CreateSettingsButtonInitializer("Watched auras", "Watched auras...", F.WatchList,
-        "Your buffs and your target's debuffs, each with its own icon and the time left.", false))
     Settings.RegisterAddOnCategory(category)
 end)
 
@@ -28,4 +25,6 @@ SlashCmdList.FOSTERCAREFRAMES = function()
     if category then Settings.OpenToCategory(category:GetID()) end
 end
 
-F.Rebuild() -- the watched icons, then the rows and the top right they leave
+-- The one public function: Auras calls it after its list changes, since the rows
+-- and the top right leave out what it shows.
+FostercareFrames = { Refresh = function() F.Rows(); F.TopRight() end }

@@ -1,5 +1,5 @@
 -- FostercareFrames: Blizzard's player, target and pet frames, their auras and cast
--- bars, energy ticks and watched auras. Doc headings are ClassicAPI's docs/API.md;
+-- bars, energy ticks. Doc headings are ClassicAPI's docs/API.md;
 -- "FrameXML" is the client's own code.
 if not CLASSIC_API_VERSION then error("FostercareFrames needs ClassicAPI.", 0) end
 
@@ -32,7 +32,12 @@ F.PAGE = {
 for _, row in ipairs(F.PAGE) do
     if type(row) == "table" and db[row[1]] == nil then db[row[1]] = true end
 end
-db.watched = db.watched or {}
+
+-- The Auras addon shows some auras on icons of their own; the rows and the top
+-- right leave those out. Its one public function: Auras.Hidden.
+function F.Hidden(name, unit, place, source)
+    return Auras and Auras.Hidden(name, unit, place, source) or false -- vanillaforge-ignore: K1
+end
 
 -- What a switch runs when it changes: F.apply[key]().
 F.apply = {}
