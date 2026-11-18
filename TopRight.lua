@@ -126,16 +126,24 @@ end
 
 -- After the stock BuffButton_Update (every PLAYER_AURAS_CHANGED): hidden when the
 -- aura has no icon or shows elsewhere (SuperWoW GetPlayerBuffID names it), then
--- its countdown.
+-- its countdown. An aura with no icon (a tracking aura such as Find Herbs) would
+-- be a bare grey edge; the rows under the frames leave those out too.
+-- Per spell ID: its name, or false when its aura has no icon. Read once: the two
+-- reads made new strings for every button at every change (0.13 KB/s, /lag
+-- 2026-11-18).
+local auraName = {}
 hooksecurefunc("BuffButton_Update", function()
     local b = this
     if not b.cd then return end
     local index = b.buffIndex
     local id = index >= 0 and GetPlayerBuffID(index)
-    -- An aura with no icon (a tracking aura such as Find Herbs) would be a bare
-    -- grey edge; the rows under the frames leave those out too.
-    if index >= 0 and not GetPlayerBuffTexture(index) then b:Hide()
-    elseif id and F.Hidden(GetSpellInfo(id), "player", "top") then b:Hide() end
+    local name = id and auraName[id]
+    if id and name == nil then
+        name = GetPlayerBuffTexture(index) and (GetSpellInfo(id) or "") or false
+        auraName[id] = name
+    end
+    if index >= 0 and (id and not name or not id and not GetPlayerBuffTexture(index)) then b:Hide()
+    elseif name and F.Hidden(name, "player", "top") then b:Hide() end
     Countdown(b, b:IsShown() and b.untilCancelled ~= 1 and GetPlayerBuffTimeLeft(index))
     Style(b)
     local shown = b:IsShown() and true or false
